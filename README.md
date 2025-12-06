@@ -67,11 +67,6 @@ https://zh.wikipedia.org/wiki/新世纪福音战士
   
 例如 “钙”  
   
-生成情况会有点慢  
-  
-请耐心等待  
-  
-因为需要在 .ttf 巨大的字库中寻找  
   
   
 ## GitHub

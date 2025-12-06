@@ -1,5 +1,3 @@
-
-
 const htmlEl = document.documentElement;
 const isChrome = /Chrome/.test(navigator.userAgent);
 
@@ -7,18 +5,14 @@ htmlEl.setAttribute('data-is-chrome',isChrome);
 
 const style = document.createElement('style');
 document.head.appendChild(style);
-// let fontAPI = 'http://192.168.31.7:8003/api/fontmin';
-//let fontAPI = `https://${location.hostname}/api/fontmin`;
-let fontAPI = 'https://eva-title-server.vercel.app/api/fontmin';
-// fontAPI = 'https://s6.magiconch.com/api/fontmin';
-// fontAPI = 'http://localhost:60912/api/fontmin';
 
-// fontAPI = 'https://eva-title-server.vercel.app/api/fontmin';
+// 设为空，彻底断开与在线字体切片接口的联系
+let fontAPI = '';
 
 const blockMojiRegex = /\s/g;
 
 
-const checkFont = (fontName,weight=100)=>{
+const checkFont = (fontName,weight=900)=>{
     const canvas = document.createElement('canvas');
     const w = 18;
     canvas.width = w;
@@ -26,9 +20,9 @@ const checkFont = (fontName,weight=100)=>{
     const ctx = canvas.getContext('2d');
     document.body.appendChild(canvas);
 
-    //ctx.font = `${weight} ${w}px ${fontName},sans-serif`;
-    ctx.font = `${weight} ${w}px "${fontName}","NotoSerifSCBlack","SourceHanSerifCN-Heavy","Noto Serif CJK SC",serif`;
-
+    // 关键：这里必须用 900 weight 进行测试，否则测不准
+    ctx.font = `${weight} ${w}px ${fontName},sans-serif`;
+ 
     ctx.fillStyle = '#000';
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
@@ -49,56 +43,54 @@ const checkFont = (fontName,weight=100)=>{
 
     const l = aa/w/w;
     document.body.removeChild(canvas);
-    return l;
+    return l > 0;
 };
 
-let haveMatisse = checkFont('EVA_Matisse_Classic-EB,MatissePro-EB') > 120;
-let haveSourceHanSerifCNHeavy = checkFont('SourceHanSerifCN-Heavy',800) > 150;
+// 检测核心字体是否已存在
+let haveMatisse = checkFont('EVA_Matisse_Classic-EB,MatissePro-EB', 900);
 
 
 let debug = /192\.168/.test(location.origin);
 
-
 if(debug){
-    // fontWeight = 100;
-    //fontAPI = 'http://localhost:60912/api/fontmin';
     haveMatisse = false;
-    // baseFontFamilyName = 'baseSplit,serif';
 }
+
+// 核心函数：强制等待本地后备字体加载
+const loadFallbackFonts = async () => {
+    // Canvas 绘图前，必须确保字体文件已被浏览器解码
+    // 这里明确请求 "900" 粗细，对应 CSS 中的 font-weight: 900
+    try {
+        await document.fonts.load('900 24px SourceHanSerifCN-Heavyall');
+        // 如果你还有其他重要的后备字体，也可以加在这里
+        // await document.fonts.load('900 24px NotoSerifSC-Black');
+    } catch (e) {
+        console.warn('Local fallback font loading skipped or failed', e);
+    }
+};
 
 
 const getFontFromText = (name,text,onOver=_=>{})=>{
-    if(!text) return requestAnimationFrame(onOver);
-    if(haveMatisse) return requestAnimationFrame(onOver);
-
-    text = text.replace(blockMojiRegex,'');
-    text += '0';
-    text = Array.from(new Set(text)).sort().join('');
-    // console.log(str2utf8(text))
-    // console.log(utf82str(str2utf8(text)))
-    text = diffDefaultMoji(text);
-    // console.log({text})
-    if(!text) return requestAnimationFrame(onOver);
-
-    const unicode = str2utf8(text).join();
-    const fontURL = `${fontAPI}?name=${name}&unicode=${unicode}`;
-
-    loadFont(name,fontURL,_=>{
-        onOver(_)
-        // style.innerHTML = `html {font-family: a123;}`;
-    })
+    // 不再进行 API 请求和子集化
+    // 直接等待后备字体 Ready，然后立即开始绘制
+    loadFallbackFonts().then(() => {
+        requestAnimationFrame(onOver);
+    });
 }
+
+// 此函数在纯本地模式下作用减弱，保留以兼容旧逻辑结构
 const loadFont = async (fontName,fontURL,callback) => {
     if(haveMatisse) return requestAnimationFrame(callback);
-	const fontFace = new FontFace(fontName, `url(${fontURL})`);
+    // 即使加载也强制指定 weight
+	const fontFace = new FontFace(fontName, `url(${fontURL})`, { weight: '900' });
 	fontFace.load().then(fontFace => {
 		document.fonts.add(fontFace);
 		callback(fontFace);
 	}).catch(e=>{
-        // console.log(e);
         callback();
     })
 };
+
 function str2utf8(str) {
     return str.split('').map(s=>s.charCodeAt(0))
 }
@@ -118,23 +110,11 @@ const defaultMojiPlus = ' \n,-./01234567890:?ABCDEFGHILMNOPRSTUVabcdefghijklmnop
 
 const getMoji = _=>{
     let v = defaultMojiPlus+layouts.map(a=>[a.inputs.map(t=>t.placeholder),a.exemples]).flat().join();
-    // console.log(v)
-    // v += document.querySelector('body').textContent;
     return v;
 };
 
 let defaultMoji = Array.from(new Set(getMoji())).sort();
 
-// console.log(defaultMoji.join(''));
-
-// if(ios || !isChrome){
-//     defaultMoji = [];
-// }
-
-if(debug){
-    const unicode = str2utf8(defaultMoji.join('')).join();
-    console.log(`${fontAPI}?name=${fontFamilyName}&type=woff&unicode=${unicode}`);
-}
 
 const diffDefaultMoji = text=>{
     return text.split('').filter(moji=>!defaultMoji.includes(moji)).join('').replace(/\s/g,'')
@@ -262,6 +242,7 @@ const app = new Vue({
                 });
 
                 this.loading = true;
+                // 直接本地处理，不再 check API
                 getFontFromText(fontFamilyName,texts.join(''), _=>{
                     make({
                         outputCanvas: this.$refs['canvas'],
@@ -277,7 +258,6 @@ const app = new Vue({
         setLayout(_layout,noRoute){
             this.layout = _layout;
             const {inputs,config} = _layout;
-            // console.log(Object.assign({},defaultConfig,config))
             this.config = Object.assign({},defaultConfig,config);
             this.setDefaultTexts(_layout);
 
@@ -290,9 +270,7 @@ const app = new Vue({
             if(!noRoute) history.replaceState({}, title, `./?layout=${encodeURIComponent(id)}`);
         },
         setExemple(exemple){
-            // console.log({exemple})
             exemple.forEach((t,i)=>{
-                // this.texts[i]=t
                 this.$set(this.texts,i,t);
             });
             this.make();
@@ -302,7 +280,7 @@ const app = new Vue({
             this.texts = inputs.map(input=>{
                 const {type} = input;
                 if(type === 'tab'){
-                    return 0//input.options[0]
+                    return 0
                 }
                 return '';
             })
@@ -342,6 +320,8 @@ const app = new Vue({
             return this.texts.join() !== transformFunc[2](this.texts.join())
         },
         noMatchMojis(){
+            // 因为现在用全字库，这里其实可以放宽或者直接返回空
+            // 暂时保留逻辑，仅检查 Matisse 字体是否支持
             return Array.from(new Set(this.allText)).sort().filter(m=>!EVAMatisseClassicMojis.includes(m))
         }
     },
@@ -353,11 +333,6 @@ const app = new Vue({
 		output(v){
 			document.documentElement.setAttribute('data-output',!!v);
 		},
-        // layout:'make',
-        // texts:{
-        //     deep:true,
-        //     handler:'make'
-        // },
     }
 })
 
@@ -381,53 +356,37 @@ let outputCanvas = createCanvas();
 let canvas = createCanvas();
 
 const c = async callback=>{
+    // 启动时优先加载后备字体
+    await loadFallbackFonts();
+
+    // 尝试加载其他辅助字体
     loadFont('notdef','NotDefault.woff2',async _=>{
         loadFont('baseSplit','base-split.woff?r=220716',async _=>{
-            getFontFromText(fontFamilyName,getMoji(),async _=>{
-                layouts.slice().sort(_=>-1).forEach((layout,index)=>{
-                    let texts = [
-                        // '使徒',
-                        // '襲来',
-                        // '第壱話',
-                    ];
-                    texts = layout.inputs.map((input,index)=>{
-                        return texts[index] || input.placeholder
-                    })
-                    const height = 240;
-                    const config = Object.assign({},defaultConfig,layout.config,{
-                        height,
-                        // convolute: true,
-                        noise:false,
-                        blur:1,
-                        // inverse: Math.random()>0.9,
-                    });
-                    make({
-                        outputCanvas,
-                        canvas,
-                        texts,
-                        config,
-                        layout
-                    })
-                    const src = makeBMPFormCanvas(outputCanvas)
-                    layout.src = src;
-                    // console.log(src)
-                    // app.$set(layout,'src',src)
-                    // outputEl.appendChild(el)
-
-                    // if(layout.exemples){
-                    //     layout.exemples.forEach(texts=>{
-                    //         const el = make({
-                    //             texts,
-                    //             config,
-                    //             layout
-                    //         })
-                    //         // outputEl.appendChild(el)
-                    //     })
-                    // }
+             
+             // 初始化生成布局预览
+            layouts.slice().sort(_=>-1).forEach((layout,index)=>{
+                let texts = [];
+                texts = layout.inputs.map((input,index)=>{
+                    return texts[index] || input.placeholder
                 })
-                app.layouts = layouts;
-                callback()
+                const height = 240;
+                const config = Object.assign({},defaultConfig,layout.config,{
+                    height,
+                    noise:false,
+                    blur:1,
+                });
+                make({
+                    outputCanvas,
+                    canvas,
+                    texts,
+                    config,
+                    layout
+                })
+                const src = makeBMPFormCanvas(outputCanvas)
+                layout.src = src;
             })
+            app.layouts = layouts;
+            callback()
         })
     })
 }
@@ -441,6 +400,3 @@ c(_=>{
 
     app.loading = false;
 });
-
-
-

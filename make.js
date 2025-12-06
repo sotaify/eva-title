@@ -1,5 +1,3 @@
-
-
 const ios = /iphone|ipad|ipod|ios/i.test(navigator.userAgent);
 const isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 &&
   navigator.userAgent &&
@@ -14,10 +12,22 @@ const orangeColorInverse = 'rgba(255,165,255,.2)'
 
 let fontWeight = 900;
 
-let fontFamilyName = 'EVAMatisseClassic'
-const engFontFamilyName = `"Times New Roman"`
+// 1. 第一优先级：EVAMatisseClassic
+let fontFamilyName = 'EVAMatisseClassic';
 
-let baseFontFamilyName = 'EVA_Matisse_Classic-EB,MatissePro-EB,SourceHanSerifCN-Heavy,NotoSerifSC-Black,SourceHanSerifCN-Heavyall,serif,baseSplit,notdef';
+
+const engFontFamilyName = `"Times New Roman"`;
+
+// 2. 后备字体列表
+// 顺序：FOT-MatissePro-EB -> SourceHanSerifCN-Heavyall -> 系统字体
+let baseFontFamilyName =
+   'FOT-MatissePro-EB,' +       //   第一优先级
+  'SourceHanSerifCN-Heavyall,' +  // 第二优先级：思源宋体 全字库 (核心后备)
+  'NotoSerifSC-Black,' +          // 第三优先级：Noto Serif SC Black (备用)
+  'serif,' +                      // 系统 serif
+  'baseSplit,' +
+  'notdef';
+
 
 
 const defaultOutputRatio = 1.334;
@@ -78,9 +88,9 @@ const removeCanvas = canvas=>{
 const rgb2yuv = (r,g,b)=>{
 	var y, u, v;
 
-	y = r *  .299000 + g *  .587000 + b *  .114000;
-	u = r * -.168736 + g * -.331264 + b *  .500000 + 128;
-	v = r *  .500000 + g * -.418688 + b * -.081312 + 128;
+	y = r * .299000 + g * .587000 + b * .114000;
+	u = r * -.168736 + g * -.331264 + b * .500000 + 128;
+	v = r * .500000 + g * -.418688 + b * -.081312 + 128;
 
 	y = Math.floor(y);
 	u = Math.floor(u);
@@ -139,7 +149,8 @@ const make = ({
 })=>{
     if(timer) console.time(layout.title)
 
-    const ctx = canvas.getContext('2d');
+    // 优化：添加 willReadFrequently: true 解决控制台 Canvas 警告
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     let { 
         shadow = true,
@@ -172,7 +183,11 @@ const make = ({
     const space = padding / 2;
 
     const fontSize = defaultHeight / 2;
-    const fontPadding = fontSize / 48;
+
+    // 修复：增大 padding，防止大字重字体边缘被裁切 (incomplete characters / clipping)
+    // 原来是 / 48，改为 / 6，给字体留足呼吸空间
+    const fontPadding = fontSize / 6;
+
     // console.log({fontPadding})
     const defaultFontSize = fontSize;
     const kataFontSize = Math.floor(fontSize * 0.85);
@@ -238,8 +253,9 @@ const make = ({
             // shadow = true
         } = config;
 
-        // console.log({ctx})
-        
+        // 这里就是字体的最终组合逻辑
+        // 最终的字体栈字符串会是： "EVAMatisseClassic, FOT-MatissePro-EB, SourceHanSerifCN-Heavyall, ..."
+        // 浏览器会按照这个顺序依次查找，找到第一个支持该字符的字体进行渲染
         ctx.font = `${fontWeight} ${fontSize}px ${_fontFamilyName},${baseFontFamilyName}`;
         ctx.fillStyle = fontColor
         ctx.lineCap  = 'round';
@@ -256,7 +272,8 @@ const make = ({
 
     const makeTextCanvas = (text,letterSpacing = 0,margin = 0)=>{
         const canvas = createCanvas();
-        const ctx = canvas.getContext('2d');
+        // 优化
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         let fontFamilyName = null;
 
@@ -306,7 +323,8 @@ const make = ({
         }
         
         const canvas = createCanvas();
-        const ctx = canvas.getContext('2d');
+        // 优化
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         canvas.style.letterSpacing = `${letterSpacing}px`
 
@@ -365,7 +383,8 @@ const make = ({
     }
     const makeLinesCanvas = (texts,letterSpacing = 0)=>{
         const canvas = createCanvas();
-        const ctx = canvas.getContext('2d');
+        // 优化
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         setCtxConfig(ctx);
         let allWidth = 0;
@@ -407,7 +426,8 @@ const make = ({
             lineHeight = 1,
         } = config
         const canvas = createCanvas();
-        const ctx = canvas.getContext('2d');
+        // 优化
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         setCtxConfig(ctx,{
             // fontFamilyName:'Helvetica'
@@ -469,7 +489,8 @@ const make = ({
 
     const makeVerticalTextCanvas = (text,letterSpacing = 0)=>{
         const canvas = createCanvas();
-        const ctx = canvas.getContext('2d');
+        // 优化
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         const config = {
             textBaseline:'top',
@@ -589,7 +610,8 @@ const make = ({
 
             zoomCanvas.width = zoomWidth;
             zoomCanvas.height = zoomheight;
-            const zoomCtx = zoomCanvas.getContext('2d');
+            // 优化
+            const zoomCtx = zoomCanvas.getContext('2d', { willReadFrequently: true });
 
             zoomCtx.drawImage(
                 canvas,
@@ -613,7 +635,8 @@ const make = ({
     
     if(outLine){
         const outLineCanvas = createCanvas();
-        const outLineCtx = outLineCanvas.getContext('2d');
+        // 优化
+        const outLineCtx = outLineCanvas.getContext('2d', { willReadFrequently: true });
         
         const outLineZoom = 4;
         const outLineWidth = width / outLineZoom;
@@ -656,7 +679,8 @@ const make = ({
 
 
     // const outputCanvas = createCanvas();
-    const outputCtx = outputCanvas.getContext('2d');
+    // 优化
+    const outputCtx = outputCanvas.getContext('2d', { willReadFrequently: true });
 
     outputCanvas.width = outputWidth
     outputCanvas.height = outputHeight
@@ -698,7 +722,7 @@ const make = ({
             let seed = 18;
             // console.log({seed})
             for(let i = 0;i < pixelData.length;i += 4){
-                let l = pixelData[i] *  .299000 + pixelData[i+1] *  .587000 + pixelData[i+2] *  .114000;
+                let l = pixelData[i] * .299000 + pixelData[i+1] * .587000 + pixelData[i+2] * .114000;
                 let s = Math.round(rand(-seed,seed)) * (l/255 - 0.5);
                 s = Math.floor(s)
                 // console.log({s})

@@ -45,3 +45,20 @@ https://github.com/itorr/eva-title
 
 ## 标题参考
 https://zh.wikipedia.org/wiki/新世纪福音战士
+
+  
+---
+  
+以上是原作者的项目  
+作者或是为了应对版权问题  
+该项目不可直接部署在静态网页  
+我将给出直接可以使用的版本  
+无需修改  
+但我使用的仍是作者给出的 api 接口  
+感谢作者  
+  
+## GitHub
+https://github.com/sotaify/eva-title
+
+## Demo web  
+https://yys.im/eva

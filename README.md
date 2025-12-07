@@ -47,13 +47,14 @@ https://github.com/itorr/eva-title
 https://zh.wikipedia.org/wiki/新世纪福音战士
 
 
- ---以上是原作者的项目   
+ ---  
+ 以上是原作者的项目   
 
  作者或是为了应对版权问题    
 
  该项目不可直接部署在静态网页    
 
- 我将给出直接可以使用的版本    
+ 我将给出直接可以静态部署使用的版本    
 
  无需修改    
 
@@ -65,7 +66,7 @@ https://zh.wikipedia.org/wiki/新世纪福音战士
 
  例如 “钙”    
 
- 已使用思源字体作为后备字体
+ 已使用思源字体 SourceHanSerifCN-Heavy 作为后备字体
 
  ## 说明
  - 一共采用三种字体

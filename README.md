@@ -69,8 +69,8 @@ https://zh.wikipedia.org/wiki/新世纪福音战士
 
  ## 说明
  - 一共采用三种字体
- - 优先度分别为：EVA-Matisse-Classic.  FOT-MatissePro-EB.  SourceHanSerifCN-Heavyall.
- - 多余的字体则作为测试 无伤大雅
+ - 优先度分别为：EVA-Matisse-Classic.woff2  FOT-MatissePro-EB.woff2  SourceHanSerifCN-Heavyall.ttf
+ - 多余的字体则作为测试 可自行删除
  - 由于文件过大 首次加载时间略长
 
 
